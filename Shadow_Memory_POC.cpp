@@ -12,11 +12,12 @@
 
 using namespace std;
 
-int SIZE = 0x100000;
+unsigned int SIZE = 0xffffffff;
 long long unsigned int OFFSET = 0X0000100000000000;
 
 int main(int argc,char *argv[])
 {
+//	printf("%u\n",SIZE);
 	string delimiter = ":";
 	ifstream test ("test.txt");
 	size_t pos = 0;
@@ -29,6 +30,7 @@ int main(int argc,char *argv[])
 		int position,Offset;
 		shadow = (char *)mmap((caddr_t)OFFSET,SIZE/8,PROT_READ | PROT_WRITE , MAP_SHARED|MAP_ANONYMOUS,4,0);
 		memset(shadow,0,(SIZE/8)*sizeof(char));
+		bool b;
 		if((caddr_t)shadow !=(caddr_t)-1)
 		{
 			while(getline(test,s))
@@ -58,10 +60,14 @@ int main(int argc,char *argv[])
 					{
 						Offset = (address>>3);
 						position = 7 - (address&7);
-						cout<<"Offset :"<<Offset<<"position :"<<position<<endl;
+						//cout<<"Offset : "<<Offset<<"position :"<<position<<endl;
+						//b = (shadow[Offset]>>position)&1;
+						//cout<<b<<endl;
 						shadow[Offset] = (shadow[Offset])|(1<<position);
-						//	cout<<hex<<shadow[Offset]<<endl;
-						printf("%x\n",shadow[Offset]);
+						b=(shadow[Offset]>>position)&1;
+						//cout<<b<<endl;
+						//cout<<hex<<shadow[Offset]<<endl;
+						//printf("%x\n",shadow[Offset]);
 						address++;
 					}
 				}
