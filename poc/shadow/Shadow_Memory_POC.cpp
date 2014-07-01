@@ -6,9 +6,14 @@
 #include <stdint.h>
 #include <sstream>
 #include <sys/mman.h>
+#include <sys/types.h>
 #include <cstdio>
 #include <cstdlib>
 #include <string.h>
+
+#ifndef MAP_ANONYMOUS
+#  define MAP_ANONYMOUS MAP_ANON
+#endif
 
 using namespace std;
 
