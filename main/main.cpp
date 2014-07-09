@@ -21,8 +21,8 @@
 
 using namespace std;
 
-unsigned int SIZE = 0xffffffff;
-long long unsigned int OFFSET = 0X800000000000;
+UINT32 SIZE_ = 0xffffffff;
+UINT64 OFFSET = 0X800000000000;
 char *SHADOW;
 
 
@@ -52,7 +52,7 @@ VOID ImageLoad(IMG img, VOID *v)
         //TraceFile << "Start Address :" << hex <<IMG_LowAddress(img)<< "End Address :"<< hex <<IMG_HighAddress(img)<< endl;
         UINT32 Offset,position;
         UINT64 address = IMG_StartAddress(img);
-        for(int i=0;i<IMG_SizeMapped(img);i++)
+        for(UINT32 i=0;i<IMG_SizeMapped(img);i++)
         {
             Offset = address>>3;
             position = 7 - (address&7);
@@ -144,11 +144,11 @@ static VOID RecordWriteAddrSize(VOID * addr, INT32 size)
 // Memory write instruction handler
 static VOID RecordMemWrite(VOID * ip)
 {
-    UINT32 Offset,position ;
-    UINT64 address = WriteAddr;
-    for(int i=0;i<WriteSize;i++)
+    INT32 Offset,position ;
+    UINT64 address = (UINT64)WriteAddr;
+    for(INT32 i=0;i<WriteSize;i++)
     {
-        Offset = (address>>3);
+        Offset = (INT32)(address>>3);
         position = 7 - (address&7);
         SHADOW[Offset] = (char )(SHADOW[Offset]|(1<<position));
         address++;
@@ -395,12 +395,12 @@ int main(int argc, char * argv[])
     // Initialize pin
     if (PIN_Init(argc, argv)) 
     	return Usage();
-    SHADOW = (char *)mmap((void *)OFFSET , (size_t)SIZE>>3 , PROT_READ | PROT_WRITE , MAP_SHARED|MAP_ANONYMOUS,4,0);
-    memset((void *)SHADOW , 0 , (SIZE/8)*sizeof(char));
+    SHADOW = (char *)mmap((void *)OFFSET , (size_t)SIZE_>>3 , PROT_READ | PROT_WRITE , MAP_SHARED|MAP_ANONYMOUS,4,0);
+    memset((void *)SHADOW , 0 , (SIZE_/8)*sizeof(char));
     if((caddr_t)SHADOW == (caddr_t)-1)
     {
         perror("SHADOW Memory mapping");
-        return;
+        return 0;
     }
 
     // File initialization	- For Logs
