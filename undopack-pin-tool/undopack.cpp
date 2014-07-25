@@ -1,5 +1,6 @@
 #include "pin.H"
 #include "portability.H"
+#include "instlib.H"
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -14,6 +15,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string.h>
+#include <ctime>
 
 #ifndef MAP_ANONYMOUS
 #  define MAP_ANONYMOUS MAP_ANON
@@ -36,6 +38,15 @@ UINT64 OFFSET = 0;
 // Pointer to SHADOW Memory array
 // 1-to-1 mapping is used
 char *SHADOW;
+
+time_t start,now;
+
+
+// Instrumentation for injecting pin in child processes. Pin will always be in the child and parent after a fork. 
+// By default, pin will not be in a process after an exec system call. This tool intercepts the exec system call
+// and inserts a Pin command line prefix so pin will also be present after exec
+// Its a constructor to implement pintool in child process(initiated by exec family ) too.
+INSTLIB::FOLLOW_CHILD follow ;
 
 /* ===================================================================== */
 /* Commandline Switches */
@@ -464,6 +475,15 @@ VOID bbladdress(VOID *Start , UINT32 End)
 				// Setting the shadow memory to zero again after every
 				// dump of unpacked layer
 				memset((void *)SHADOW , 0 , (SIZE_/8)*sizeof(char));
+				// getting current system time
+				time(&now);
+				// finding the difference in starting and current time
+				// if its greater than 60 seconds then its TIMEOUT situation
+				if(difftime(now,start)>=(double)60)
+				{
+					cout<<"TIMEOUT"<<endl;
+					exit(EXIT_FAILURE);
+				}
 				return;
 			}
 			address++;
@@ -483,6 +503,20 @@ VOID Trace(TRACE trace, VOID *v)
 	}
 }
 
+// Function to follow child
+BOOL FollowChild(CHILD_PROCESS childProcess, VOID * userData)
+{
+    TraceFile<< "Following the new thread : " << getpid() << endl;
+    return TRUE;
+}    
+
+// Exception Handler
+EXCEPT_HANDLING_RESULT GlobalHandler(THREADID threadIndex, EXCEPTION_INFO * pExceptInfo, 
+                                      PHYSICAL_CONTEXT * pPhysCtxt, VOID *v)
+{
+    cout << "GlobalHandler: Caught unexpected exception. " << PIN_ExceptionToString(pExceptInfo) << endl;
+    return EHR_UNHANDLED;
+}
 
 /* ===================================================================== */
 /* Main Function                                                                 */
@@ -507,8 +541,26 @@ int main(int argc, char * argv[])
 		return 0;
 	}
 
+	// Activate, must be called before PIN_StartProgram
+	follow.Activate();
+
+	// Set the prefix to be used for the next child
+	// The prefix is the full pathname to the pin 
+	//binary followed by everything up to and including 
+	//the --. It is stored as array of pointers to tokens.
+	follow.SetPrefix(argv);
+
+	// Setting the starting time
+	time(&start);
+
+	// Exception Handler instrumentation
+	PIN_AddInternalExceptionHandler(GlobalHandler, NULL);
+
 	// File initialization	- For Logs
 	TraceFile.open(KnobOutputFile.Value().c_str());
+	
+	// Instrumentation for every fork/vfork/exec-ed instruction
+	PIN_AddFollowChildProcessFunction(FollowChild, 0);
 
 	// Register Instruction to be called to instrument instructions
 	TRACE_AddInstrumentFunction(Trace, 0);
